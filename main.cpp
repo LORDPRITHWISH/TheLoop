@@ -1,9 +1,10 @@
 #include <SDL2/SDL.h>
 #include <iostream>
 
-// Screen dimensions
 const int SCREEN_WIDTH = 800;
 const int SCREEN_HEIGHT = 600;
+const int RECT_SIZE = 50;
+const int SPEED = 1;
 
 int main(int argc, char* argv[]) {
     // Initialize SDL
@@ -12,15 +13,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Create SDL window
-    SDL_Window* window = SDL_CreateWindow("SDL2 Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+    SDL_Window* window = SDL_CreateWindow("SDL2 Multiple Key Presses", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     if (!window) {
         std::cerr << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
         SDL_Quit();
         return 1;
     }
 
-    // Create a renderer
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
         std::cerr << "Renderer could not be created! SDL_Error: " << SDL_GetError() << std::endl;
@@ -29,31 +28,51 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Main game loop
+    // Rectangle position
+    int posX = SCREEN_WIDTH / 2 - RECT_SIZE / 2;
+    int posY = SCREEN_HEIGHT / 2 - RECT_SIZE / 2;
+
     bool quit = false;
     SDL_Event event;
+
+    // Main game loop
     while (!quit) {
-        // Event handling
+        // Handle quit events
         while (SDL_PollEvent(&event) != 0) {
-            if (event.type == SDL_QUIT) {
-                quit = true;
-            }
+            if (event.type == SDL_QUIT) quit = true;
         }
 
-        // Clear screen with black color
+        // Get the state of all keys
+        const Uint8* currentKeyStates = SDL_GetKeyboardState(NULL);
+
+        // Check for key combinations for simultaneous movement
+        if (currentKeyStates[SDL_SCANCODE_UP] && posY > 0) {
+            posY -= SPEED;
+        }
+        if (currentKeyStates[SDL_SCANCODE_DOWN] && posY < SCREEN_HEIGHT - RECT_SIZE) {
+            posY += SPEED;
+        }
+        if (currentKeyStates[SDL_SCANCODE_LEFT] && posX > 0) {
+            posX -= SPEED;
+        }
+        if (currentKeyStates[SDL_SCANCODE_RIGHT] && posX < SCREEN_WIDTH - RECT_SIZE) {
+            posX += SPEED;
+        }
+
+        // Clear screen
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
 
-        // Set render color to white and draw a rectangle
+        // Draw rectangle
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_Rect fillRect = { SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4, SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2 };
+        SDL_Rect fillRect = { posX, posY, RECT_SIZE, RECT_SIZE };
         SDL_RenderFillRect(renderer, &fillRect);
 
-        // Present renderer
+        // Present the updated frame
         SDL_RenderPresent(renderer);
     }
 
-    // Clean up and close SDL
+    // Clean up
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
