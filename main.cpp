@@ -7,6 +7,9 @@ const int RECT_SIZE = 50;
 const int SPEED = 1;
 
 int main(int argc, char* argv[]) {
+
+
+
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         std::cerr << "SDL could not initialize! SDL_Error: " << SDL_GetError() << std::endl;
@@ -37,6 +40,8 @@ int main(int argc, char* argv[]) {
 
     // Main game loop
     while (!quit) {
+        Uint32 startTick = SDL_GetTicks();
+
         // Handle quit events
         while (SDL_PollEvent(&event) != 0) {
             if (event.type == SDL_QUIT) quit = true;
@@ -68,8 +73,15 @@ int main(int argc, char* argv[]) {
         SDL_Rect fillRect = { posX, posY, RECT_SIZE, RECT_SIZE };
         SDL_RenderFillRect(renderer, &fillRect);
 
-        // Present the updated frame
+        // Uint32 startTick = SDL_GetTicks();
+
         SDL_RenderPresent(renderer);
+
+        Uint32 frameDuration = SDL_GetTicks() - startTick;
+        // std::cout << "Frame Duration: " << frameDuration << "ms" << std::endl;
+        if (frameDuration < 1000 / 60) {
+            SDL_Delay((1000 / 60) - frameDuration);
+        }
     }
 
     // Clean up
