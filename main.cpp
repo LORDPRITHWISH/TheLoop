@@ -1,93 +1,124 @@
-#include <SDL2/SDL.h>
-#include <iostream>
-
-const int SCREEN_WIDTH = 800;
-const int SCREEN_HEIGHT = 600;
-const int RECT_SIZE = 50;
-const int SPEED = 1;
-
-int main(int argc, char* argv[]) {
+#include<SDL2/SDL.h>
+#include<iostream>
 
 
+bool init();
+void kill();
+bool load();
 
-    // Initialize SDL
-    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::cerr << "SDL could not initialize! SDL_Error: " << SDL_GetError() << std::endl;
+// Pointers to our window and surfaces
+SDL_Window* window;
+SDL_Surface* winSurface;
+SDL_Surface* image1;
+SDL_Surface* image2;
+
+
+int main(int argc, char** argv){
+
+    if (!init()) {
+        std::cerr << "Failed to initialize SDL" << std::endl;
         return 1;
     }
 
-    SDL_Window* window = SDL_CreateWindow("SDL2 Multiple Key Presses", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-    if (!window) {
-        std::cerr << "Window could not be created! SDL_Error: " << SDL_GetError() << std::endl;
-        SDL_Quit();
+    if (!load()) {
+        std::cerr << "Failed to load media" << std::endl;
         return 1;
     }
 
-    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-    if (!renderer) {
-        std::cerr << "Renderer could not be created! SDL_Error: " << SDL_GetError() << std::endl;
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
+    // Blit image to entire window
+	SDL_BlitSurface( image1, NULL, winSurface, NULL );
+    SDL_UpdateWindowSurface( window );
 
-    // Rectangle position
-    int posX = SCREEN_WIDTH / 2 - RECT_SIZE / 2;
-    int posY = SCREEN_HEIGHT / 2 - RECT_SIZE / 2;
+    SDL_Rect dest;
+	dest.x = 160;
+	dest.y = 120;
+	dest.w = 320;
+	dest.h = 240;
+	SDL_BlitScaled( image2, NULL, winSurface, &dest );
 
+	// Update window
+	SDL_UpdateWindowSurface( window );
+
+    SDL_Event e;
     bool quit = false;
-    SDL_Event event;
-
-    // Main game loop
     while (!quit) {
-        Uint32 startTick = SDL_GetTicks();
-
-        // Handle quit events
-        while (SDL_PollEvent(&event) != 0) {
-            if (event.type == SDL_QUIT) quit = true;
-        }
-
-        // Get the state of all keys
-        const Uint8* currentKeyStates = SDL_GetKeyboardState(NULL);
-
-        // Check for key combinations for simultaneous movement
-        if (currentKeyStates[SDL_SCANCODE_UP] && posY > 0) {
-            posY -= SPEED;
-        }
-        if (currentKeyStates[SDL_SCANCODE_DOWN] && posY < SCREEN_HEIGHT - RECT_SIZE) {
-            posY += SPEED;
-        }
-        if (currentKeyStates[SDL_SCANCODE_LEFT] && posX > 0) {
-            posX -= SPEED;
-        }
-        if (currentKeyStates[SDL_SCANCODE_RIGHT] && posX < SCREEN_WIDTH - RECT_SIZE) {
-            posX += SPEED;
-        }
-
-        // Clear screen
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-        SDL_RenderClear(renderer);
-
-        // Draw rectangle
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_Rect fillRect = { posX, posY, RECT_SIZE, RECT_SIZE };
-        SDL_RenderFillRect(renderer, &fillRect);
-
-        // Uint32 startTick = SDL_GetTicks();
-
-        SDL_RenderPresent(renderer);
-
-        Uint32 frameDuration = SDL_GetTicks() - startTick;
-        // std::cout << "Frame Duration: " << frameDuration << "ms" << std::endl;
-        if (frameDuration < 1000 / 60) {
-            SDL_Delay((1000 / 60) - frameDuration);
+        while (SDL_PollEvent(&e) != 0) {
+            if (e.type == SDL_QUIT) {
+                quit = true;
+            }
         }
     }
 
-    // Clean up
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    kill();
 
-    return 0;
+	return 0;
+
+}
+    
+
+bool load() {
+	// Temporary surfaces to load images into
+		// This should use only 1 temp surface, but for conciseness we use two
+	SDL_Surface *temp1, *temp2;
+
+	// Load images
+	temp1 = SDL_LoadBMP("../assets/RAY.BMP");
+	temp2 = SDL_LoadBMP("../assets/sample_1920×1280.bmp");
+
+	// Make sure loads succeeded
+	if ( !temp1 || !temp2 ) {
+		std::cout << "Error loading image: " << SDL_GetError() << std::endl;
+		system("pause");
+		return false;
+	}
+
+	// Format surfaces
+	image1 = SDL_ConvertSurface( temp1, winSurface->format, 0 );
+	image2 = SDL_ConvertSurface( temp2, winSurface->format, 0 );
+
+	// Free temporary surfaces
+	SDL_FreeSurface( temp1 );
+	SDL_FreeSurface( temp2 );
+
+	// Make sure format succeeded
+	if ( !image1 || !image2 ) {
+		std::cout << "Error converting surface: " << SDL_GetError() << std::endl;
+		system("pause");
+		return false;
+	}
+	return true;
+}
+
+bool init() {
+	// See last example for comments
+	if ( SDL_Init( SDL_INIT_EVERYTHING ) < 0 ) {
+		std::cout << "Error initializing SDL: " << SDL_GetError() << std::endl;
+		system("pause");
+		return false;
+	} 
+
+	window = SDL_CreateWindow( "Example", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN );
+	if ( !window ) {
+		std::cout << "Error creating window: " << SDL_GetError()  << std::endl;
+		system("pause");
+		return false;
+	}
+
+	winSurface = SDL_GetWindowSurface( window );
+	if ( !winSurface ) {
+		std::cout << "Error getting surface: " << SDL_GetError() << std::endl;
+		system("pause");
+		return false;
+	}
+	return true;
+}
+
+void kill() {
+	// Free images
+	SDL_FreeSurface( image1 );
+	SDL_FreeSurface( image2 );
+
+	// Quit
+	SDL_DestroyWindow( window );
+	SDL_Quit();
 }
