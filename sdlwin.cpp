@@ -26,19 +26,10 @@ GLuint indices[] = {
     0, 4, 5, 5, 1, 0   // Bottom face
 };
 
-// Handles keyboard input for movement
-void handleInput(bool& running, float& rotationX, float& rotationY) {
+void handleInput(bool& running) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         if (event.type == SDL_QUIT) running = false;
-        if (event.type == SDL_KEYDOWN) {
-            switch (event.key.keysym.sym) {
-                case SDLK_UP:    rotationX -= 5.0f; break;
-                case SDLK_DOWN:  rotationX += 5.0f; break;
-                case SDLK_LEFT:  rotationY -= 5.0f; break;
-                case SDLK_RIGHT: rotationY += 5.0f; break;
-            }
-        }
     }
 }
 
@@ -51,7 +42,7 @@ int main() {
 
     // Create an SDL window
     SDL_Window* window = SDL_CreateWindow(
-        "3D Cube Movement", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
+        "3D Cube", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
         800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
     );
 
@@ -107,24 +98,14 @@ int main() {
 
     glBindVertexArray(0);
 
-    // Rotation variables
-    float rotationX = 0.0f;
-    float rotationY = 0.0f;
-
     // Main loop
     bool running = true;
     while (running) {
-        handleInput(running, rotationX, rotationY);
+        handleInput(running);
 
         // Clear screen
         glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // Apply transformations
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-        glRotatef(rotationX, 1.0f, 0.0f, 0.0f); // Rotate around X-axis
-        glRotatef(rotationY, 0.0f, 1.0f, 0.0f); // Rotate around Y-axis
 
         // Draw cube
         glBindVertexArray(VAO);
