@@ -1,146 +1,145 @@
+#include <box2d/box2d.h>
 #include <SDL2/SDL.h>
-#include <GL/glew.h>
-#include <iostream>
-#include <cmath>
+#include <stdio.h>
 
-// Vertex data for a cube
-GLfloat vertices[] = {
-    // Positions           // Colors
-    -0.5f, -0.5f, -0.5f,   1.0f, 0.0f, 0.0f,  // Bottom-left-back
-     0.5f, -0.5f, -0.5f,   0.0f, 1.0f, 0.0f,  // Bottom-right-back
-     0.5f,  0.5f, -0.5f,   0.0f, 0.0f, 1.0f,  // Top-right-back
-    -0.5f,  0.5f, -0.5f,   1.0f, 1.0f, 0.0f,  // Top-left-back
-    -0.5f, -0.5f,  0.5f,   1.0f, 0.0f, 1.0f,  // Bottom-left-front
-     0.5f, -0.5f,  0.5f,   0.0f, 1.0f, 1.0f,  // Bottom-right-front
-     0.5f,  0.5f,  0.5f,   1.0f, 1.0f, 1.0f,  // Top-right-front
-    -0.5f,  0.5f,  0.5f,   0.5f, 0.5f, 0.5f   // Top-left-front
-};
+const int SCREEN_WIDTH = 800;
+const int SCREEN_HEIGHT = 600;
 
-// Indices for the cube (6 faces)
-GLuint indices[] = {
-    0, 1, 2, 2, 3, 0,  // Back face
-    4, 5, 6, 6, 7, 4,  // Front face
-    0, 4, 7, 7, 3, 0,  // Left face
-    1, 5, 6, 6, 2, 1,  // Right face
-    3, 7, 6, 6, 2, 3,  // Top face
-    0, 4, 5, 5, 1, 0   // Bottom face
-};
+const float grdWidth = 400.0f;
+const float grdHeight = 50.0f;
 
-// Handles keyboard input for movement
-void handleInput(bool& running, float& rotationX, float& rotationY) {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) running = false;
-        if (event.type == SDL_KEYDOWN) {
-            switch (event.key.keysym.sym) {
-                case SDLK_UP:    rotationX -= 5.0f; break;
-                case SDLK_DOWN:  rotationX += 5.0f; break;
-                case SDLK_LEFT:  rotationY -= 5.0f; break;
-                case SDLK_RIGHT: rotationY += 5.0f; break;
-            }
-        }
-    }
+const float dynWidth = 10.0f;
+const float dynHeight = 10.0f;
+
+const float SCALE = 1.0f; // Pixels per meter for rendering
+
+// Convert Box2D coordinates to SDL screen coordinates
+int worldToScreenX(float x, float width) {
+    printf("x: %f, width: %f = res: %f \n", x, width, (x - width) * SCALE);
+    // printf("x: %f, width: %f = res: %f \n", x, width, (x) * SCALE);
+    return static_cast<int>((x - width) * SCALE );
+    // return static_cast<int>((x) * SCALE );
+}
+
+int worldToScreenY(float y, float height) {
+    // printf("y: %f, height: %f = res: %f \n", y, height, SCREEN_HEIGHT - ((y) * SCALE));
+    printf("y: %f, height: %f = res: %f \n", y, height, SCREEN_HEIGHT - ((y + height) * SCALE));
+    // return static_cast<int>(SCREEN_HEIGHT - ((y) * SCALE));
+    return static_cast<int>(SCREEN_HEIGHT - ((y + height) * SCALE));
 }
 
 int main() {
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        std::cerr << "Failed to initialize SDL: " << SDL_GetError() << "\n";
+        printf("Failed to initialize SDL: %s\n", SDL_GetError());
         return -1;
     }
 
-    // Create an SDL window
-    SDL_Window* window = SDL_CreateWindow(
-        "3D Cube Movement", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 
-        800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN
-    );
+    SDL_Window* window = SDL_CreateWindow("Box2D Simulation with SDL",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 
     if (!window) {
-        std::cerr << "Failed to create window: " << SDL_GetError() << "\n";
+        printf("Failed to create window: %s\n", SDL_GetError());
         SDL_Quit();
         return -1;
     }
 
-    // Create an OpenGL context
-    SDL_GLContext glContext = SDL_GL_CreateContext(window);
-    if (!glContext) {
-        std::cerr << "Failed to create OpenGL context: " << SDL_GetError() << "\n";
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+    if (!renderer) {
+        printf("Failed to create renderer: %s\n", SDL_GetError());
         SDL_DestroyWindow(window);
         SDL_Quit();
         return -1;
     }
 
-    // Initialize GLEW
-    glewExperimental = GL_TRUE;
-    if (glewInit() != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW\n";
-        SDL_GL_DeleteContext(glContext);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return -1;
-    }
+    // Initialize the gravity vector for the world
+    b2WorldDef worldDef = b2DefaultWorldDef();
+    worldDef.gravity = (b2Vec2){0.0f, -100.0f};
 
-    // Enable depth testing
-    glEnable(GL_DEPTH_TEST);
+    b2WorldId worldId = b2CreateWorld(&worldDef);
 
-    // Set up vertex data
-    GLuint VBO, VAO, EBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    // Ground body
+    b2BodyDef groundBodyDef = b2DefaultBodyDef();
+    // groundBodyDef.position = (b2Vec2){0.0f+grdWidth, 0.0f+grdHeight};
+    groundBodyDef.position = (b2Vec2){0.0f+grdWidth, 0.0f+grdHeight};
 
-    glBindVertexArray(VAO);
+    b2BodyId groundId = b2CreateBody(worldId, &groundBodyDef);
+    b2Polygon groundBox = b2MakeBox(grdWidth, grdHeight);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+    b2ShapeDef groundShapeDef = b2DefaultShapeDef();
+    groundShapeDef.density = 0.0f;
+    groundShapeDef.friction = 0.3f;
+    groundShapeDef.restitution = 0.8f;
+    b2CreatePolygonShape(groundId, &groundShapeDef, &groundBox);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    // Dynamic body
+    b2BodyDef bodyDef = b2DefaultBodyDef();
+    bodyDef.type = b2_dynamicBody;
+    bodyDef.position = (b2Vec2){50.0f, 500.0f};
+    b2BodyId bodyId = b2CreateBody(worldId, &bodyDef);
 
-    // Vertex positions
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)0);
-    glEnableVertexAttribArray(0);
+    b2Polygon dynamicBox = b2MakeBox(dynWidth, dynHeight);
 
-    // Vertex colors
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(GLfloat), (GLvoid*)(3 * sizeof(GLfloat)));
-    glEnableVertexAttribArray(1);
+    b2ShapeDef shapeDef = b2DefaultShapeDef();
+    shapeDef.density = 1.0f;
+    shapeDef.friction = 0.3f;
+    b2CreatePolygonShape(bodyId, &shapeDef, &dynamicBox);
 
-    glBindVertexArray(0);
+    float timeStep = 1.0f / 60.0f;
+    int subStepCount = 4;
 
-    // Rotation variables
-    float rotationX = 0.0f;
-    float rotationY = 0.0f;
-
-    // Main loop
     bool running = true;
+    SDL_Event event;
+
+    // Simulation loop
     while (running) {
-        handleInput(running, rotationX, rotationY);
+        // Event handling
+        while (SDL_PollEvent(&event)) {
+            if (event.type == SDL_QUIT) {
+                running = false;
+            }
+        }
 
-        // Clear screen
-        glClearColor(0.1f, 0.2f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // Step the physics world
+        b2World_Step(worldId, timeStep, subStepCount);
 
-        // Apply transformations
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
-        glRotatef(rotationX, 1.0f, 0.0f, 0.0f); // Rotate around X-axis
-        glRotatef(rotationY, 0.0f, 1.0f, 0.0f); // Rotate around Y-axis
+        // Get positions
+        b2Vec2 groundPos = b2Body_GetPosition(groundId);
+        b2Vec2 dynamicPos = b2Body_GetPosition(bodyId);
 
-        // Draw cube
-        glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-        glBindVertexArray(0);
+        // Clear the screen
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+        SDL_RenderClear(renderer);
 
-        // Swap buffers
-        SDL_GL_SwapWindow(window);
+        // Draw the ground
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_Rect groundRect = {
+            worldToScreenX(groundPos.x, grdWidth),
+            worldToScreenY(groundPos.y, grdHeight),
+            static_cast<int>(grdWidth * SCALE * 2),
+            static_cast<int>(grdHeight * SCALE * 2)
+        };
+        SDL_RenderFillRect(renderer, &groundRect);
+
+        // Draw the dynamic box
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_Rect dynamicRect = {
+            worldToScreenX(dynamicPos.x , dynWidth),
+            worldToScreenY(dynamicPos.y , dynHeight),
+            static_cast<int>(dynWidth * SCALE * 2),
+            static_cast<int>(dynHeight * SCALE * 2)
+        };
+        SDL_RenderFillRect(renderer, &dynamicRect);
+
+        // Present the updated screen
+        SDL_RenderPresent(renderer);
+
+        SDL_Delay(16); // ~60 FPS
     }
 
-    // Cleanup
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glDeleteBuffers(1, &EBO);
-
-    SDL_GL_DeleteContext(glContext);
+    // Clean up
+    b2DestroyWorld(worldId);
+    SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
 
