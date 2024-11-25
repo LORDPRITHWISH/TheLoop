@@ -24,10 +24,19 @@ struct balldetails{
 
 // Convert Box2D coordinates to SDL screen coordinates
 int worldToScreenX(float x, float width) {
+    // if(width <15)
+        // printf("x: %f, width: %f = res: %f \n", x, width, (x - width) * SCALE);
+    // printf("x: %f, width: %f = res: %f \n", x, width, (x) * SCALE);
     return static_cast<int>((x - width) * SCALE );
+    // return static_cast<int>((x) * SCALE );
 }
 
 int worldToScreenY(float y, float height) {
+    // if(height <15)
+
+        // printf("y: %f, height: %f = res: %f \n", y, height, SCREEN_HEIGHT - ((y) * SCALE));
+        // printf("y: %f, height: %f = res: %f \n", y, height, SCREEN_HEIGHT - ((y + height) * SCALE));
+    // return static_cast<int>(SCREEN_HEIGHT - ((y) * SCALE));
     return static_cast<int>(SCREEN_HEIGHT - ((y + height) * SCALE));
 }
 
