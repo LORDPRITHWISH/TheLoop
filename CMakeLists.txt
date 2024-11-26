@@ -14,6 +14,10 @@ endif()
 find_package(SDL2 REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS})
 
+# Manually include SDL2_image paths
+include_directories(/usr/include/SDL2)
+set(SDL2_IMAGE_LIB /usr/lib/x86_64-linux-gnu/libSDL2_image.so)
+
 # Include OpenGL
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIR})
@@ -32,4 +36,4 @@ include_directories(${BOX2D_INCLUDE_DIR})
 add_executable(game main.cpp)
 
 # Link libraries
-target_link_libraries(game ${SDL2_LIBRARIES} ${OPENGL_gl_LIBRARY} ${GLEW_LIB} ${BOX2D_LIB})
+target_link_libraries(game ${SDL2_LIBRARIES} ${OPENGL_gl_LIBRARY} ${GLEW_LIB} ${BOX2D_LIB} ${SDL2_IMAGE_LIB})
